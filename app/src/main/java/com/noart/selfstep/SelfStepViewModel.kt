@@ -12,7 +12,9 @@ import com.noart.selfstep.model.DailyTaskStatus
 import com.noart.selfstep.model.DisciplineTask
 import com.noart.selfstep.model.SelfStepData
 import com.noart.selfstep.model.TaskType
+import com.noart.selfstep.model.TaskCheckWindow
 import java.time.LocalDate
+import java.time.LocalTime
 import java.util.UUID
 
 data class SelfStepUiState(
@@ -43,6 +45,8 @@ class SelfStepViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun toggleTodayTask(taskId: String) {
+        if (!TaskCheckWindow.isOpen(LocalTime.now())) return
+
         val state = _uiState.value
         val record = state.todayRecord
         val updatedRecord = record.copy(

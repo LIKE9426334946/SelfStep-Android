@@ -1,10 +1,19 @@
 package com.noart.selfstep.model
 
 import java.time.LocalDate
+import java.time.LocalTime
 
 enum class TaskType {
     MUST_DO,
     AVOID
+}
+
+object TaskCheckWindow {
+    val start: LocalTime = LocalTime.of(22, 45)
+    private val endExclusive: LocalTime = LocalTime.of(23, 31)
+
+    fun isOpen(time: LocalTime = LocalTime.now()): Boolean =
+        !time.isBefore(start) && time.isBefore(endExclusive)
 }
 
 data class DisciplineTask(

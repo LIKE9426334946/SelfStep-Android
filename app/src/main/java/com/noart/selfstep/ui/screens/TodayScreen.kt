@@ -27,8 +27,14 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -39,9 +45,12 @@ import androidx.compose.ui.unit.sp
 import com.noart.selfstep.SelfStepUiState
 import com.noart.selfstep.model.DailyTaskStatus
 import com.noart.selfstep.model.MetricsCalculator
+import com.noart.selfstep.model.TaskCheckWindow
 import com.noart.selfstep.model.TaskType
+import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import kotlinx.coroutines.delay
 
 @Composable
 fun TodayScreen(
@@ -50,6 +59,15 @@ fun TodayScreen(
     onToggleTask: (String) -> Unit,
     onOpenTaskManagement: () -> Unit
 ) {
+    var currentTime by remember { mutableStateOf(LocalTime.now()) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            currentTime = LocalTime.now()
+            delay(1_000L)
+        }
+    }
+
+    val isCheckWindowOpen = TaskCheckWindow.isOpen(currentTime)
     val record = state.todayRecord
     val mustDo = record.tasks.filter { it.type == TaskType.MUST_DO }
     val avoid = record.tasks.filter { it.type == TaskType.AVOID }
@@ -90,29 +108,96 @@ fun TodayScreen(
             )
         }
 
+        item {
+            CheckWindowCard(
+                currentTime = currentTime,
+                isOpen = isCheckWindowOpen
+            )
+        }
+
         if (record.tasks.isEmpty()) {
             item { EmptyTodayCard(onOpenTaskManagement) }
         } else {
-            item { SectionTitle("必须完成", "完成后打勾") }
+            item {
+                SectionTitle(
+                    "必须完成",
+                    if (isCheckWindowOpen) "现在可以打勾" else "22:45–23:30 可打勾"
+                )
+            }
             if (mustDo.isEmpty()) {
                 item { SectionEmptyText("还没有必须完成的事情") }
             } else {
                 items(mustDo, key = { it.taskId }) { task ->
-                    DailyTaskCard(task = task, onToggle = { onToggleTask(task.taskId) })
+                    DailyTaskCard(
+                        task = task,
+                        enabled = isCheckWindowOpen,
+                        onToggle = { onToggleTask(task.taskId) }
+                    )
                 }
             }
 
             item {
                 Spacer(Modifier.height(4.dp))
-                SectionTitle("禁止事项", "今天守住了就打勾")
+                SectionTitle(
+                    "禁止事项",
+                    if (isCheckWindowOpen) "今天守住了就打勾" else "22:45–23:30 可打勾"
+                )
             }
             if (avoid.isEmpty()) {
                 item { SectionEmptyText("还没有禁止做的事情") }
             } else {
                 items(avoid, key = { it.taskId }) { task ->
-                    DailyTaskCard(task = task, onToggle = { onToggleTask(task.taskId) })
+                    DailyTaskCard(
+                        task = task,
+                        enabled = isCheckWindowOpen,
+                        onToggle = { onToggleTask(task.taskId) }
+                    )
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun CheckWindowCard(currentTime: LocalTime, isOpen: Boolean) {
+    val containerColor = if (isOpen) {
+        MaterialTheme.colorScheme.primaryContainer
+    } else {
+        MaterialTheme.colorScheme.surfaceVariant
+    }
+    val contentColor = if (isOpen) {
+        MaterialTheme.colorScheme.onPrimaryContainer
+    } else {
+        MaterialTheme.colorScheme.onSurfaceVariant
+    }
+
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        color = containerColor
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 13.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = if (isOpen) "现在可以确认今日任务" else "当前不可打勾",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = contentColor
+                )
+                Text(
+                    text = "每天仅限 22:45–23:30 操作",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = contentColor.copy(alpha = 0.78f)
+                )
+            }
+            Text(
+                text = currentTime.format(DateTimeFormatter.ofPattern("HH:mm:ss")),
+                style = MaterialTheme.typography.labelLarge,
+                color = contentColor
+            )
         }
     }
 }
@@ -200,7 +285,7 @@ private fun SectionTitle(title: String, hint: String) {
 }
 
 @Composable
-private fun DailyTaskCard(task: DailyTaskStatus, onToggle: () -> Unit) {
+private fun DailyTaskCard(task: DailyTaskStatus, enabled: Boolean, onToggle: () -> Unit) {
     val isAvoid = task.type == TaskType.AVOID
     val container = if (isAvoid) {
         MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.55f)
@@ -213,7 +298,8 @@ private fun DailyTaskCard(task: DailyTaskStatus, onToggle: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .animateContentSize()
-            .clickable(onClick = onToggle),
+            .alpha(if (enabled) 1f else 0.72f)
+            .clickable(enabled = enabled, onClick = onToggle),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = container),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
@@ -222,7 +308,11 @@ private fun DailyTaskCard(task: DailyTaskStatus, onToggle: () -> Unit) {
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Checkbox(checked = task.completed, onCheckedChange = { onToggle() })
+            Checkbox(
+                checked = task.completed,
+                enabled = enabled,
+                onCheckedChange = { onToggle() }
+            )
             Column(modifier = Modifier.weight(1f).padding(start = 4.dp)) {
                 Text(
                     text = task.title,
@@ -232,6 +322,9 @@ private fun DailyTaskCard(task: DailyTaskStatus, onToggle: () -> Unit) {
                 )
                 Text(
                     text = when {
+                        !enabled && task.completed && isAvoid -> "今天已守住 · 限定时间内可修改"
+                        !enabled && task.completed -> "今天已完成 · 限定时间内可修改"
+                        !enabled -> "请在 22:45–23:30 操作"
                         task.completed && isAvoid -> "今天已守住"
                         task.completed -> "今天已完成"
                         isAvoid -> "没有做这件事后再打勾"
