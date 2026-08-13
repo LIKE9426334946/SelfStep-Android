@@ -108,13 +108,6 @@ fun TodayScreen(
             )
         }
 
-        item {
-            CheckWindowCard(
-                currentTime = currentTime,
-                isOpen = isCheckWindowOpen
-            )
-        }
-
         if (record.tasks.isEmpty()) {
             item { EmptyTodayCard(onOpenTaskManagement) }
         } else {
@@ -154,50 +147,6 @@ fun TodayScreen(
                     )
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun CheckWindowCard(currentTime: LocalTime, isOpen: Boolean) {
-    val containerColor = if (isOpen) {
-        MaterialTheme.colorScheme.primaryContainer
-    } else {
-        MaterialTheme.colorScheme.surfaceVariant
-    }
-    val contentColor = if (isOpen) {
-        MaterialTheme.colorScheme.onPrimaryContainer
-    } else {
-        MaterialTheme.colorScheme.onSurfaceVariant
-    }
-
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(18.dp),
-        color = containerColor
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 13.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = if (isOpen) "现在可以确认今日任务" else "当前不可打勾",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = contentColor
-                )
-                Text(
-                    text = "每天仅限 22:45–23:30 操作",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = contentColor.copy(alpha = 0.78f)
-                )
-            }
-            Text(
-                text = currentTime.format(DateTimeFormatter.ofPattern("HH:mm:ss")),
-                style = MaterialTheme.typography.labelLarge,
-                color = contentColor
-            )
         }
     }
 }
