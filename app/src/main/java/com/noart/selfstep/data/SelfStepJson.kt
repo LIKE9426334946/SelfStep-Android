@@ -46,8 +46,17 @@ object SelfStepJson {
         return root.toString(2)
     }
 
-    fun decode(json: String): SelfStepData {
+    fun decode(json: String): SelfStepData = decodeRoot(JSONObject(json))
+
+    fun decodeStrict(json: String): SelfStepData {
         val root = JSONObject(json)
+        require(root.has("version")) { "备份 JSON 缺少 version 字段。" }
+        require(root.optJSONArray("tasks") != null) { "备份 JSON 缺少 tasks 数组。" }
+        require(root.optJSONArray("records") != null) { "备份 JSON 缺少 records 数组。" }
+        return decodeRoot(root)
+    }
+
+    private fun decodeRoot(root: JSONObject): SelfStepData {
         val tasks = root.optJSONArray("tasks").toObjectList { item ->
             DisciplineTask(
                 id = item.getString("id"),

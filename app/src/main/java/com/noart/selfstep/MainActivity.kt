@@ -42,6 +42,9 @@ class MainActivity : ComponentActivity() {
                     onAddTask = viewModel::addTask,
                     onUpdateTask = viewModel::updateTask,
                     onDeleteTask = viewModel::deleteTask,
+                    onExportData = viewModel::exportBackup,
+                    onImportData = viewModel::importBackup,
+                    onBackupDirectorySelected = viewModel::configureBackupDirectory,
                     onStorageMessageShown = viewModel::clearStorageMessage
                 )
             }

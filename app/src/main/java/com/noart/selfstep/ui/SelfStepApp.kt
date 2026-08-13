@@ -1,5 +1,6 @@
 package com.noart.selfstep.ui
 
+import android.net.Uri
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -24,6 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import com.noart.selfstep.SelfStepUiState
+import com.noart.selfstep.data.BackupOperation
 import com.noart.selfstep.model.DisciplineTask
 import com.noart.selfstep.model.TaskType
 import com.noart.selfstep.ui.screens.HistoryScreen
@@ -43,6 +45,9 @@ fun SelfStepApp(
     onAddTask: (String, TaskType) -> Unit,
     onUpdateTask: (String, String, TaskType) -> Unit,
     onDeleteTask: (String) -> Unit,
+    onExportData: () -> Unit,
+    onImportData: () -> Unit,
+    onBackupDirectorySelected: (Uri, BackupOperation) -> Unit,
     onStorageMessageShown: () -> Unit
 ) {
     var selectedTab by rememberSaveable { mutableStateOf(AppTab.TODAY) }
@@ -94,7 +99,10 @@ fun SelfStepApp(
 
                     AppTab.HISTORY -> HistoryScreen(
                         state = state,
-                        contentPadding = contentPadding
+                        contentPadding = contentPadding,
+                        onExportData = onExportData,
+                        onImportData = onImportData,
+                        onBackupDirectorySelected = onBackupDirectorySelected
                     )
 
                     AppTab.MANAGE -> TaskManagementScreen(

@@ -1,11 +1,15 @@
 package com.noart.selfstep
 
 import android.app.Application
+import android.net.Uri
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewModelScope
+import com.noart.selfstep.data.BackupOperation
+import com.noart.selfstep.data.DocumentJsonBackup
 import com.noart.selfstep.data.LocalJsonRepository
 import com.noart.selfstep.model.DailyRecord
 import com.noart.selfstep.model.DailyTaskStatus
@@ -16,11 +20,16 @@ import com.noart.selfstep.model.TaskCheckWindow
 import java.time.LocalDate
 import java.time.LocalTime
 import java.util.UUID
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 data class SelfStepUiState(
     val data: SelfStepData = SelfStepData(),
     val today: LocalDate = LocalDate.now(),
-    val storageMessage: String? = null
+    val storageMessage: String? = null,
+    val backupDirectoryReady: Boolean = false,
+    val backupInProgress: Boolean = false
 ) {
     val todayRecord: DailyRecord
         get() = data.records[today.toString()] ?: DailyRecord(today.toString(), emptyList())
@@ -28,7 +37,10 @@ data class SelfStepUiState(
 
 class SelfStepViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = LocalJsonRepository(application)
-    private val _uiState = mutableStateOf(SelfStepUiState())
+    private val documentBackup = DocumentJsonBackup(application)
+    private val _uiState = mutableStateOf(
+        SelfStepUiState(backupDirectoryReady = documentBackup.hasDirectoryAccess())
+    )
     val uiState: State<SelfStepUiState> = _uiState
 
     init {
@@ -95,6 +107,80 @@ class SelfStepViewModel(application: Application) : AndroidViewModel(application
         _uiState.value = _uiState.value.copy(storageMessage = null)
     }
 
+    fun exportBackup() {
+        launchExport()
+    }
+
+    fun importBackup() {
+        launchImport()
+    }
+
+    fun configureBackupDirectory(treeUri: Uri, operation: BackupOperation) {
+        when (operation) {
+            BackupOperation.EXPORT -> launchExport(treeUri)
+            BackupOperation.IMPORT -> launchImport(treeUri)
+        }
+    }
+
+    private fun launchExport(treeUri: Uri? = null) {
+        if (_uiState.value.backupInProgress) return
+        val dataSnapshot = _uiState.value.data
+
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(backupInProgress = true, storageMessage = null)
+            val result = withContext(Dispatchers.IO) {
+                runCatching {
+                    treeUri?.let(documentBackup::configureDirectory)
+                    documentBackup.export(dataSnapshot)
+                }
+            }
+            _uiState.value = _uiState.value.copy(
+                backupDirectoryReady = documentBackup.hasDirectoryAccess(),
+                backupInProgress = false,
+                storageMessage = result.fold(
+                    onSuccess = { "已导出到 ${DocumentJsonBackup.BACKUP_LOCATION}" },
+                    onFailure = { it.message ?: "导出失败，请稍后重试。" }
+                )
+            )
+        }
+    }
+
+    private fun launchImport(treeUri: Uri? = null) {
+        if (_uiState.value.backupInProgress) return
+
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(backupInProgress = true, storageMessage = null)
+            val result = withContext(Dispatchers.IO) {
+                runCatching {
+                    treeUri?.let(documentBackup::configureDirectory)
+                    val today = LocalDate.now()
+                    val imported = normalizeToday(documentBackup.import(), today)
+                    repository.save(imported)
+                    ImportedSnapshot(imported, today)
+                }
+            }
+
+            result.fold(
+                onSuccess = { imported ->
+                    _uiState.value = SelfStepUiState(
+                        data = imported.data,
+                        today = imported.today,
+                        storageMessage = "导入成功，任务和历史记录已更新。",
+                        backupDirectoryReady = documentBackup.hasDirectoryAccess(),
+                        backupInProgress = false
+                    )
+                },
+                onFailure = { error ->
+                    _uiState.value = _uiState.value.copy(
+                        backupDirectoryReady = documentBackup.hasDirectoryAccess(),
+                        backupInProgress = false,
+                        storageMessage = error.message ?: "导入失败，请检查备份文件。"
+                    )
+                }
+            )
+        }
+    }
+
     private fun normalizeToday(data: SelfStepData, today: LocalDate): SelfStepData {
         val date = today.toString()
         val previousStatuses = data.records[date]?.tasks.orEmpty().associateBy { it.taskId }
@@ -120,9 +206,16 @@ class SelfStepViewModel(application: Application) : AndroidViewModel(application
         _uiState.value = SelfStepUiState(
             data = data,
             today = today,
-            storageMessage = storageError
+            storageMessage = storageError,
+            backupDirectoryReady = documentBackup.hasDirectoryAccess(),
+            backupInProgress = _uiState.value.backupInProgress
         )
     }
+
+    private data class ImportedSnapshot(
+        val data: SelfStepData,
+        val today: LocalDate
+    )
 
     class Factory(private val application: Application) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
