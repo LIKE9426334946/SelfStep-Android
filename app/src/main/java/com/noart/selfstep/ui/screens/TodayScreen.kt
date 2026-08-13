@@ -262,27 +262,13 @@ private fun DailyTaskCard(task: DailyTaskStatus, enabled: Boolean, onToggle: () 
                 enabled = enabled,
                 onCheckedChange = { onToggle() }
             )
-            Column(modifier = Modifier.weight(1f).padding(start = 4.dp)) {
-                Text(
-                    text = task.title,
-                    style = MaterialTheme.typography.titleMedium,
-                    textDecoration = if (task.completed) TextDecoration.LineThrough else TextDecoration.None,
-                    color = if (task.completed) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = when {
-                        !enabled && task.completed && isAvoid -> "今天已守住 · 限定时间内可修改"
-                        !enabled && task.completed -> "今天已完成 · 限定时间内可修改"
-                        !enabled -> "请在 22:45–23:30 操作"
-                        task.completed && isAvoid -> "今天已守住"
-                        task.completed -> "今天已完成"
-                        isAvoid -> "没有做这件事后再打勾"
-                        else -> "完成后打勾"
-                    },
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = accent
-                )
-            }
+            Text(
+                text = task.title,
+                style = MaterialTheme.typography.titleMedium,
+                textDecoration = if (task.completed) TextDecoration.LineThrough else TextDecoration.None,
+                color = if (task.completed) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.weight(1f).padding(start = 4.dp)
+            )
             Box(
                 modifier = Modifier
                     .size(9.dp)
