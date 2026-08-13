@@ -12,11 +12,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -25,14 +23,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.noart.selfstep.SelfStepUiState
 import com.noart.selfstep.model.DailyRecord
 import com.noart.selfstep.model.MetricsCalculator
-import com.noart.selfstep.model.TaskType
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -77,7 +72,7 @@ fun HistoryScreen(state: SelfStepUiState, contentPadding: PaddingValues) {
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
                 ) {
                     Text(
-                        "添加任务并完成一天后，这里会显示详细历史记录。",
+                        "添加任务并完成一天后，这里会显示每日完成进度。",
                         modifier = Modifier.padding(22.dp),
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -86,7 +81,7 @@ fun HistoryScreen(state: SelfStepUiState, contentPadding: PaddingValues) {
         } else {
             item {
                 Text(
-                    "每日明细",
+                    "每日记录",
                     style = MaterialTheme.typography.titleLarge,
                     modifier = Modifier.padding(top = 10.dp)
                 )
@@ -134,7 +129,7 @@ private fun HistoryRecordCard(record: DailyRecord) {
                 modifier = Modifier
                     .weight(1f)
                     .padding(17.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+                verticalArrangement = Arrangement.Center
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -154,30 +149,6 @@ private fun HistoryRecordCard(record: DailyRecord) {
                         color = accent,
                         fontWeight = FontWeight.Bold
                     )
-                }
-                record.tasks.forEach { task ->
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            contentAlignment = Alignment.Center,
-                            modifier = Modifier
-                                .size(20.dp)
-                                .clip(CircleShape)
-                                .background(
-                                    if (task.completed) successColor
-                                    else MaterialTheme.colorScheme.surfaceVariant
-                                )
-                        ) {
-                            if (task.completed) Text("✓", color = Color.White, fontWeight = FontWeight.Bold)
-                        }
-                        Column(modifier = Modifier.padding(start = 9.dp)) {
-                            Text(task.title, style = MaterialTheme.typography.bodyMedium)
-                            Text(
-                                if (task.type == TaskType.AVOID) "禁止事项" else "必须完成",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
                 }
             }
         }
